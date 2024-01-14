@@ -1,9 +1,0 @@
-FROM python:3.13-rc-slim
-
-ENV PORT 8000
-ENV ID 0
-
-WORKDIR /src
-COPY server.py /src
-
-CMD python3 server.py $PORT $ID
