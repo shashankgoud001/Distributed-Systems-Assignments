@@ -1,0 +1,21 @@
+#docker-compose.yml file
+#-----------------------
+version: "3.9"
+services:
+servicename:
+build: . # Path to the Dockerfile
+image: imagenameA
+container_name: containernameA
+ports:
+- "hostport:internalport" # Exposing port to host
+volumes:
+- /var/run/docker.sock:/var/run/docker.sock
+- ~/Downloads:/app
+# This share host’s the docker daemon with the container. Now, the container can spawn
+privileged: true # This should be true to share the docker daemon
+networks:
+net1: # Need to define net1 in the compose file
+aliases:
+- hostnameA # Usually same as containername
+environment:
+VAR1: VALUE1 # Environment variables accessed with os.environ[’VAR1’].
