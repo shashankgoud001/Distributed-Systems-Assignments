@@ -54,7 +54,7 @@ def find_nearest_server(pos) -> int:
         Finds the position of nearest virtual server
         in the clockwise direction
     '''
-    j = pos
+    j = pos+1
     while True:
         if circular_array[j].server is not None:
             return j
