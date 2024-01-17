@@ -63,7 +63,7 @@ class ConsistentHashing:
         Finds the position of nearest virtual server
         in the clockwise direction
         """
-        j = pos + 1
+        j = (pos + 1) % self.num_slots
         while True:
             if self.circular_array[j].server is not None:
                 return j
