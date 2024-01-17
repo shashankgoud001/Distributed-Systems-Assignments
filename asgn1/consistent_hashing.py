@@ -39,8 +39,12 @@ def linear_probe(pos) -> int:
         Linearly probes the next available
         slot in the map for the virtual server
     '''
+    count = 0
     while circular_array[pos].server is not None:
         pos = (pos + 1)%num_slots
+        count = count+1
+        if (count==num_slots):
+            return -1
     
     return pos
 
@@ -85,11 +89,10 @@ def add_server(i, ip, port):
         maps the requests to this new virtual server
         accordingly
     '''
-    for j in range(num_servers):
-        pos = server_hash(i,j)
-        if circular_array[pos].server is not None:
-            pos = linear_probe(pos)
-
+    for j in range(vir_servers):
+        pos = linear_probe(server_hash(i,j))
+        if pos == -1:
+            return "Slots are full cannot add new server"
         circular_array[pos].server = ServerNode(i, j, ip, port)
         map_server_to_request(pos)
 
@@ -101,9 +104,10 @@ def remove_request(i, request : RequestNode):
     pos = request_hash(i)
     if request not in circular_array[pos].requests:
         # needs to return error
-        pass
+        return "Error : cannot find the request"
     else:
         circular_array[pos].requests.remove(request)
+        return "Success : Removed the request"
 
 # Remove Server
 def remove_server(i):
@@ -113,7 +117,7 @@ def remove_server(i):
         this to the next closest virtual server in the 
         clockwise direction
     '''
-    for j in range(num_servers):
+    for j in range(vir_servers):
         pos = server_hash(i, j)
         while circular_array[pos].server is None or circular_array[pos].server.server_id_i != i:
             pos = (pos + 1)%num_slots
