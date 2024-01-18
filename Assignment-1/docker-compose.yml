@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  lb:
+    build: ./lb
+    image: lb:1.1
+    container_name: lb
+    privileged: true
+    ports:
+      - "5000:5000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./lb:/app
+    networks:
+      - my-net
+    command: uvicorn loadbalancer:app --host 0.0.0.0 --port 5000
+  
+  server:
+    build: ./server
+    image: serverimg
+    container_name: server
+    networks:
+      - my-net
+
+networks:
+  my-net:
+    name: my-net
