@@ -7,17 +7,17 @@ from urllib.parse import urlparse, urlunparse
 from consistent_hashing import *
 
 app = FastAPI()
-c_hash =ConsistentHashing(3,512,9)
-request_count=0
-serverList = {}
-servindex=1
+app.c_hash =ConsistentHashing(3,512,9)
+app.request_count=0
+app.serverList = {}
+app.servindex=1
 
 @app.get("/rep")
 def replicas():
     response = {
         "message": {
-            "N": len(serverList),
-            "replicas": serverList
+            "N": len(app.serverList),
+            "replicas": app.serverList
         },
         "status": "successful"
     }
@@ -29,6 +29,7 @@ async def add_servers(request: Request):
     req = await request.json()
     n = req["n"]
     hostnames = req["hostnames"]
+    print(hostnames)
     if len(hostnames) > n:
         response = {
             "message": "<Error> Length of hostname list is more than newly added instances",
@@ -36,6 +37,7 @@ async def add_servers(request: Request):
         }
         return JSONResponse(status_code=400, content=response)
     else:
+        print("create containers")
         for hostname in hostnames:
             command = "docker run --name {container_name} --env SERVER_ID={container_name} \
             --network {network_name}  -d serverimg".format(container_name=hostname, network_name="my-net")
@@ -48,17 +50,17 @@ async def add_servers(request: Request):
             result = subprocess.run(command, shell=True, text=True)
             print(result.returncode)
             if result.returncode == 0:
-                serverList[hostname]=servindex
-                servindex=servindex+1
+                app.serverList[hostname]=app.servindex
+                app.servindex=app.servindex+1
                 ip = subprocess.run(ipcommand,stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
                 ipaddr=ip.stdout.strip()
-                c_hash.add_server(serverList[hostname],ipaddr,8080)
+                app.c_hash.add_server(app.serverList[hostname],ipaddr,8080)
                 print(ipaddr)
-        print(serverList)
+        print(app.serverList)
     response = {
         "message": {
-            "N": len(serverList),
-            "replicas": serverList
+            "N": 0,
+            "replicas": 1
         },
         "status": "successful"
     }
@@ -82,9 +84,9 @@ async def delete_servers(request: Request):
             result = subprocess.run(command, shell=True, text=True)
 
             if result.returncode == 0:
-                indx=serverList[hostname]
-                c_hash.remove_server(indx)
-                serverList.pop(hostname)
+                indx=app.serverList[hostname]
+                app.c_hash.remove_server(indx)
+                app.serverList.pop(hostname)
             else:
                 return JSONResponse(status_code=400,content="failed to remove server")
     return "deleted the server"
@@ -103,8 +105,8 @@ def catch_all_path(_path: str, request: Request):
         url = str(request.url)
         print(url)
         parsed_url = urlparse(url)
-        request_count+=1
-        server_node = c_hash.get_nearest_server(c_hash.request_hash(request_count))
+        app.request_count+=1
+        server_node = app.c_hash.get_nearest_server(app.c_hash.request_hash(app.request_count))
         modified_url = parsed_url._replace(netloc=f"{server_node.server_ip}:{server_node.server_port}")
         modified_url = urlunparse(modified_url)
         # print(modified_url)

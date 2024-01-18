@@ -29,7 +29,7 @@ class Node:
 class ConsistentHashing:
     # Array that holds virtual servers and requests
     def __init__(self,num_servers,num_slots,vir_servers) -> None:
-        self.circular_array = [Node] * num_slots
+        self.circular_array = [Node()] * num_slots
         self.num_servers = num_servers
         self.num_slots = num_slots
         self.vir_servers = vir_servers
@@ -89,10 +89,17 @@ class ConsistentHashing:
         Maps the requests to this virtual server and
         traverses in anti-clockwise direction
         """
+        print(self.circular_array[pos].server)
         j = (pos - 1 + self.num_slots) % self.num_slots
-        while self.circular_array[j].server is not None:
+        cntr = 0
+        print("initial", j)
+        while self.circular_array[j].server is None:
             self.circular_array[j].next = pos
             j = (j - 1 + self.num_slots) % self.num_slots
+            cntr += 1
+            # print(j, 'something')
+            # if cntr == self.num_slots:
+            #     return
 
     # Add Request
     def add_request(self, i, request: RequestNode):
@@ -116,6 +123,7 @@ class ConsistentHashing:
             if pos == -1:
                 return "Slots are full cannot add new server"
             self.circular_array[pos].server = ServerNode(i, j, ip, port)
+            print(self.circular_array[pos].server)
             self.map_server_to_request(pos)
 
     # Remove Request
