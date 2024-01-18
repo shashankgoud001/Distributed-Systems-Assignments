@@ -69,6 +69,19 @@ class ConsistentHashing:
                 return j
 
             j = (j + 1) % self.num_slots
+    
+    # Gets nearest server node given a position
+    def get_nearest_server(self, pos) -> ServerNode:
+        '''
+            Gets the nearest server in the the clockwise direction,
+            given the position of reqest 
+        '''
+        j = (pos + 1) % self.num_slots
+        while True:
+            if self.circular_array[j].server is not None:
+                return self.circular_array[j].server
+
+            j = (j + 1) % self.num_slots
 
     # Map server to request
     def map_server_to_request(self,pos):

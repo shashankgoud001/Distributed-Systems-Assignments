@@ -39,7 +39,7 @@ async def fetch_all(s, urls):
 
 
 async def main():
-    urls = range(1, 20000)
+    urls = range(1, 10000)
     async with aiohttp.ClientSession() as session:
         htmls = await fetch_all(session, urls)
         # print(htmls)
