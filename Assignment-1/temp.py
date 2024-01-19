@@ -28,7 +28,9 @@ class Node:
 class myclass:
     # Array that holds virtual servers and requests
     def __init__(self,num_servers,num_slots,vir_servers) -> None:
-        self.circular_array = [Node()] * num_slots
+        self.circular_array = []
+        for _ in range(num_slots):
+            self.circular_array.append(Node())
         self.num_servers = num_servers
         self.num_slots = num_slots
         self.vir_servers = vir_servers
