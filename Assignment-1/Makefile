@@ -1,5 +1,5 @@
 start:
-	docker-compose up -d lb 
+	docker-compose up  lb 
 
 build:
 	docker-compose build 

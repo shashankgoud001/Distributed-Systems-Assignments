@@ -25,7 +25,7 @@ async def fetch(s, url):
         if r.status != 200:
             r.raise_for_status()
         res=await r.text()
-        # print(res)
+        print(res)
         return res
 
 
@@ -39,7 +39,7 @@ async def fetch_all(s, urls):
 
 
 async def main():
-    urls = range(1, 10000)
+    urls = range(1, 80000)
     async with aiohttp.ClientSession() as session:
         htmls = await fetch_all(session, urls)
         # print(htmls)
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     start = perf_counter()
     asyncio.run(main())
     stop = perf_counter()
-    print("time taken:", stop - start)
+    # print("time taken:", stop - start)
 
 
 #time taken: 25.523571709000862
