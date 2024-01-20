@@ -66,11 +66,16 @@ class ConsistentHashing:
         in the clockwise direction
         """
         j = (pos + 1) % self.num_slots
+        cntr = 0
         while True:
+            if cntr == self.num_slots:
+                return j
+            
             if self.circular_array[j].server is not None:
                 return j
 
             j = (j + 1) % self.num_slots
+            cntr += 1
     
     # Gets nearest server node given a position
     def get_nearest_server(self, pos) -> ServerNode:
