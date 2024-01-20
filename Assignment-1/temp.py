@@ -35,6 +35,10 @@ class myclass:
         self.num_slots = num_slots
         self.vir_servers = vir_servers
 
+    # Request mapping hash function
+    def request_hash(self,i) -> int:
+        return (i**2 + 2 * i + 17) % self.num_slots
+
     # Server mapping hash function
     def server_hash(self,i, j) -> int:
         return (i**2 + j**2 + 2 * i * j + 25) % self.num_slots
@@ -53,25 +57,57 @@ class myclass:
                 return -1
 
         return pos
+
+    # Finds the nearest server
+    def find_nearest_server(self,pos) -> int:
+        """
+        Finds the position of nearest virtual server
+        in the clockwise direction
+        """
+        j = (pos + 1) % self.num_slots
+        cntr = 0
+        while True:
+            if cntr == self.num_slots:
+                return j
+            
+            if self.circular_array[j].server is not None:
+                return j
+
+            j = (j + 1) % self.num_slots
+            cntr += 1
     
+    # Gets nearest server node given a position
+    def get_nearest_server(self, pos) -> ServerNode:
+        '''
+            Gets the nearest server in the the clockwise direction,
+            given the position of reqest 
+        '''
+        j = (pos + 1) % self.num_slots
+        while True:
+            if self.circular_array[j].server is not None:
+                return self.circular_array[j].server
+
+            j = (j + 1) % self.num_slots
+
     # Map server to request
     def map_server_to_request(self,pos):
         """
         Maps the requests to this virtual server and
         traverses in anti-clockwise direction
         """
-        print(self.circular_array[pos].server)
         j = (pos - 1 + self.num_slots) % self.num_slots
-        cntr = 0
-        print("initial", j)
         while self.circular_array[j].server is None:
             self.circular_array[j].next = pos
             j = (j - 1 + self.num_slots) % self.num_slots
-            cntr += 1
-            # print(j, 'something')
-            # print(cntr)
-            # if cntr == self.num_slots:
-            #     return
+
+    # Add Request
+    def add_request(self, i, request: RequestNode):
+        """
+        Adds request to the map
+        """
+        pos = self.request_hash(i)
+        self.circular_array[pos].requests.append(request)
+        self.circular_array[pos].next = self.find_nearest_server(pos)
 
     # Add Server
     def add_server(self, i, ip, port):
@@ -86,14 +122,66 @@ class myclass:
             if pos == -1:
                 return "Slots are full cannot add new server"
             self.circular_array[pos].server = ServerNode(i, j, ip, port)
-            print(self.circular_array[pos].server)
             self.map_server_to_request(pos)
+
+    # Remove Request
+    def remove_request(self, i, request: RequestNode):
+        """
+        Removes request from the map
+        """
+        pos = self.request_hash(i)
+        if request not in self.circular_array[pos].requests:
+            # needs to return error
+            return "Error : cannot find the request"
+        else:
+            self.circular_array[pos].requests.remove(request)
+            return "Success : Removed the request"
+
+    # Remove Server
+    def remove_server(self, i):
+        """
+        Removes all the virtual server instances from
+        the map and re-maps the requests that are pointed to
+        this to the next closest virtual server in the
+        clockwise direction
+        """
+        for j in range(self.vir_servers):
+            print("iter: ", j)
+            pos = self.server_hash(i, j)
+            while (
+                self.circular_array[pos].server is None
+                or self.circular_array[pos].server.server_id_i != i
+            ):
+                pos = (pos + 1) % self.num_slots
+
+            self.circular_array[pos].server = None
+            next_pos = self.find_nearest_server(pos)
+            self.circular_array[pos].next = next_pos
+
+            # re-map requests
+            k = (pos - 1 + self.num_slots) % self.num_slots
+            while self.circular_array[k].server is not None:
+                self.circular_array[k].next = next_pos
+                k = (k - 1 + self.num_slots) % self.num_slots
+
 
 cls = myclass(3, 10, 2)
 cls.add_server(1, 533, 5345)
 
+print("after adding")
 for i in range(10):
     if cls.circular_array[i].server is None:
-        print('finally found')
+        # print('finally found')
+        pass
+    else:
+        print(i, 'woah', cls.circular_array[i].server)
+
+cls.remove_server(1)
+
+print("after removing")
+for i in range(10):
+    if cls.circular_array[i].server is None:
+        # print('finally found')
+        pass
     else:
         print(i, 'woah', cls.circular_array[i].server)
