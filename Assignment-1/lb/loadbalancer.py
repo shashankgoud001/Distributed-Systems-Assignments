@@ -94,7 +94,7 @@ async def add_servers(request: Request):
                 ip = subprocess.run(
                     ipcommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
                 ipaddr = ip.stdout.strip()
-                app.c_hash.add_server(app.serverList[hostname],ipaddr,8080)
+                app.c_hash.add_server(app.serverList[hostname], ipaddr, 8080)
                 print(ipaddr)
         print(app.serverList)
 
@@ -116,13 +116,47 @@ async def delete_servers(request: Request):
     req = await request.json()
     n = req["n"]
     hostnames = req["hostnames"]
+
+    # picking at random if mentioned list is smaller than n
+    if len(hostnames) < n:
+        available_servers = list(app.serverList.keys())
+        pickserv = [item for item in available_servers if item not in hostnames]
+        if len(pickserv) + len(hostnames) < n:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "message": "failed as requested deletions exceeds the available number of servers",
+                    "status": "failure"
+                }
+            )
+        else:
+            hostnames += random.sample(pickserv, n-len(hostnames))
+
     if len(hostnames) > n:
         response = {
             "message": "<Error> Length of hostname list is more than newly added instances",
             "status": "failure"
         }
         return JSONResponse(status_code=400, content=response)
+
     else:
+
+        # making a preliminary check whether the requested server delete is possible or not
+        invalidhosts = []
+        for hostname in hostnames:
+            if hostname not in app.serverList:
+                invalidhosts.append(hostname)
+
+        if invalidhosts != []:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "message": f"The following servers were not found: {', '.join(invalidhosts)}",
+                    "status": "failure"
+                }
+            )
+
+        servers_removed = []
         for hostname in hostnames:
             command = f"docker rm -f {hostname}"
             result = subprocess.run(command, shell=True, text=True)
@@ -131,9 +165,31 @@ async def delete_servers(request: Request):
                 indx = app.serverList[hostname]
                 app.c_hash.remove_server(indx)
                 app.serverList.pop(hostname)
+                servers_removed.append(hostname)
             else:
-                return JSONResponse(status_code=400, content="failed to remove server")
-    return "deleted the server"
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "message": {
+                            "N": len(list(app.serverList.keys())),
+                            "replicas": list(app.serverList.keys()),
+                            "error": f"failed to remove server: {hostname}"
+                        },
+                        "status": "failure"
+                    }
+                )
+
+    servers = list(app.serverList.keys())
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": {
+                "N": len(servers),
+                "replicas": servers
+            },
+            "status": "successful"
+        }
+    )
 
 
 @app.get("/{_path:path}")
@@ -171,3 +227,8 @@ def catch_all_path(_path: str, request: Request):
             return JSONResponse(content="error occured", status_code=400)
 
         # print(request.client)
+
+if __name__ == "__main__":
+    import uvicorn
+    print("this code is running")
+    uvicorn.run("loadbalancer:app", host="0.0.0.0", port=5000, reload=True)
