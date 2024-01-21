@@ -94,7 +94,7 @@ async def add_servers(request: Request):
                 ip = subprocess.run(
                     ipcommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
                 ipaddr = ip.stdout.strip()
-                # app.c_hash.add_server(app.serverList[hostname],ipaddr,8080)
+                app.c_hash.add_server(app.serverList[hostname],ipaddr,8080)
                 print(ipaddr)
         print(app.serverList)
 
@@ -129,7 +129,7 @@ async def delete_servers(request: Request):
 
             if result.returncode == 0:
                 indx = app.serverList[hostname]
-                # app.c_hash.remove_server(indx)
+                app.c_hash.remove_server(indx)
                 app.serverList.pop(hostname)
             else:
                 return JSONResponse(status_code=400, content="failed to remove server")
