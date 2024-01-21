@@ -42,7 +42,7 @@ async def add_servers(request: Request):
     has_duplicates = len(hostnames) != len(set(hostnames))
 
     while len(hostnames) < n:
-        cname = uuid.uuid4().hex
+        cname = str(uuid.uuid4().hex)[:6]
         if cname in app.serverList:
             pass
         else:
