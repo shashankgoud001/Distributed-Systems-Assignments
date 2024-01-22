@@ -13,7 +13,7 @@ services:
       - ./lb:/app
     networks:
       - my-net
-    command: uvicorn loadbalancer:app --host 0.0.0.0 --port 5000 --reload
+    command: python3 loadbalancer.py
   
   server:
     build: ./server
