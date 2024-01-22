@@ -12,7 +12,7 @@ app = FastAPI()
 app.c_hash = ConsistentHashing(3, 512, 9)
 app.max_request_count = 1e6 # 1 million
 app.serverList = {}
-# app.servindex = 1
+app.max_servindex = 1024
 
 
 @app.get("/rep")
@@ -90,7 +90,7 @@ async def add_servers(request: Request):
             result = subprocess.run(command, shell=True, text=True)
             print(result.returncode)
             if result.returncode == 0:
-                app.serverList[hostname] = randint(1, 1024)
+                app.serverList[hostname] = randint(1, app.max_servindex)
                 # app.servindex = app.servindex+1
                 ip = subprocess.run(
                     ipcommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
@@ -208,7 +208,7 @@ def catch_all_path(_path: str, request: Request):
         parsed_url = urlparse(url)
         # app.request_count += 1
         server_node = app.c_hash.get_nearest_server(
-            app.c_hash.request_hash(randint(1, 10000)))
+            app.c_hash.request_hash(randint(1, app.max_request_count)))
         modified_url = parsed_url._replace(
             netloc=f"{server_node.server_ip}:{server_node.server_port}")
         modified_url = urlunparse(modified_url)
