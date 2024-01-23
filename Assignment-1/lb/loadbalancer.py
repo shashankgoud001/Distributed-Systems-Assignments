@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from random import randint
 import requests
+from requests.adapters import HTTPAdapter, Retry
 import subprocess
 import random
 from urllib.parse import urlparse, urlunparse
@@ -15,8 +16,65 @@ app.serverList = {}
 app.max_servindex = 1024
 
 
-@app.get("/rep")
+
+def respawn_dead_servers():
+
+
+    change_list = []
+    for serv_name, details  in app.serverList.items():
+        request_url = f"http://{details['ip']}:8080/heartbeat"
+
+        try:
+            req_session = requests.Session()
+            retries = Retry(total=3,
+                            backoff_factor=0.1,
+                            status_forcelist=[ 500, 502, 503, 504 ])
+
+            req_session.mount('http://', HTTPAdapter(max_retries=retries))
+            
+            response = req_session.get(request_url, timeout=0.5)
+
+            data = response.json()
+            print(f'<+> Server {serv_name} is alive; Response: {data}')
+            
+        except requests.RequestException as e:
+            print(f'<!> Server {serv_name} is dead; Error: {e}')
+            new_server_name = serv_name + "_new"
+            print(f'<!> Respawning a new server with name: {new_server_name}...')
+            command = f"docker run --name {new_server_name} --env SERVER_ID={new_server_name} \
+            --network my-net  -d serverimg " # HC
+
+            result = subprocess.run(command, shell=True, text=True)
+            
+            if result.returncode != 0:
+                print(f'<!> Failed to respawn a new server!')
+                continue
+            
+            change_list.append((serv_name, new_server_name))
+            print(f'<+> Successfully respawned a new server with name: {new_server_name}')
+            
+    
+    for old_name, new_name in change_list:
+        app.serverList[new_name] = app.serverList.pop(old_name)
+        ipcommand = [
+                'docker',
+                'inspect',
+                '--format={{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}',
+                 new_name
+            ]
+
+        ip = subprocess.run(
+            ipcommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
+        ipaddr = ip.stdout.strip()
+        
+        app.c_hash.remove_server(app.serverList[new_name]['index'])
+        app.serverList[new_name]['ip'] = ipaddr
+        app.c_hash.add_server(app.serverList[new_name]['index'], app.serverList[new_name]['ip'], 8080)
+
+
+@app.get("/rep") 
 def replicas():
+    respawn_dead_servers()
     response = {
         "message": {
             "N": len(app.serverList),
@@ -29,6 +87,7 @@ def replicas():
 
 @app.post("/add")
 async def add_servers(request: Request):
+    respawn_dead_servers()
     req = await request.json()
     n = req["n"]
     hostnames = req["hostnames"]
@@ -44,9 +103,7 @@ async def add_servers(request: Request):
 
     while len(hostnames) < n:
         cname = str(uuid.uuid4().hex)[:6]
-        if cname in app.serverList:
-            pass
-        else:
+        if not (cname in app.serverList or cname in hostnames):
             hostnames.append(cname)
 
     print(hostnames)
@@ -90,13 +147,25 @@ async def add_servers(request: Request):
             result = subprocess.run(command, shell=True, text=True)
             print(result.returncode)
             if result.returncode == 0:
-                app.serverList[hostname] = randint(1, app.max_servindex)
                 # app.servindex = app.servindex+1
                 ip = subprocess.run(
                     ipcommand, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True, text=True)
                 ipaddr = ip.stdout.strip()
-                app.c_hash.add_server(app.serverList[hostname], ipaddr, 8080)
+                app.serverList[hostname] = {"index": randint(1, app.max_servindex), "ip": ipaddr}
+                app.c_hash.add_server(app.serverList[hostname]['index'], ipaddr, 8080)
                 print(ipaddr)
+            else:
+                return JSONResponse(
+                    status_code=500,
+                    content={
+                        "message": {
+                            "N": len(list(app.serverList.keys())),
+                            "replicas": list(app.serverList.keys()),
+                            "error": f"failed to create server: {hostname}"
+                        },
+                        "status": "failure"
+                    }
+                )
         print(app.serverList)
 
         servers = list(app.serverList.keys())
@@ -114,6 +183,7 @@ async def add_servers(request: Request):
 
 @app.delete("/rm")
 async def delete_servers(request: Request):
+    respawn_dead_servers()
     req = await request.json()
     n = req["n"]
     hostnames = req["hostnames"]
@@ -163,7 +233,7 @@ async def delete_servers(request: Request):
             result = subprocess.run(command, shell=True, text=True)
 
             if result.returncode == 0:
-                indx = app.serverList[hostname]
+                indx = app.serverList[hostname]['index']
                 app.c_hash.remove_server(indx)
                 app.serverList.pop(hostname)
                 servers_removed.append(hostname)
@@ -195,6 +265,7 @@ async def delete_servers(request: Request):
 
 @app.get("/{_path:path}")
 def catch_all_path(_path: str, request: Request):
+    respawn_dead_servers()
     allowed = ["home", "heartbeat"]
     if _path not in allowed:
         response = {

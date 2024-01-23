@@ -5,8 +5,11 @@ build:
 	docker-compose build 
 
 clean:
-	-docker rm -f $$(docker ps -aqf "ancestor=serverimg")
+	make clean_servers
 	-docker-compose down
+
+clean_servers:
+	-docker rm -f $$(docker ps -aqf "ancestor=serverimg")
 
 
 	
