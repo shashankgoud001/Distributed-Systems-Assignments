@@ -1,5 +1,5 @@
 start:
-	docker-compose up  lb 
+	docker-compose up lb 
 
 build:
 	docker-compose build 
@@ -12,7 +12,8 @@ clean_servers:
 	-docker rm -f $$(docker ps -aqf "ancestor=serverimg")
 
 remove_images:
-	-docker rmi -f 
+	-docker rmi -f serverimg lb:1.1
+
 
 
 	
