@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse,RedirectResponse
 from random import randint
 import requests
@@ -9,12 +9,15 @@ from urllib.parse import urlparse, urlunparse
 from consistent_hashing import *
 import uuid
 from time import sleep
+import threading
 
 app = FastAPI()
 app.c_hash = ConsistentHashing(3, 512, 9)
 app.max_request_count = 1e6 # 1 million
 app.serverList = {}
 app.max_servindex = 1024
+# lock
+app.lock = threading.Lock()
 
 
 
@@ -77,7 +80,8 @@ def respawn_dead_servers():
   
 @app.get("/rep") 
 def replicas():
-    respawn_dead_servers()
+    with app.lock:
+        respawn_dead_servers()
     response = {
         "message": {
             "N": len(app.serverList),
@@ -90,7 +94,8 @@ def replicas():
 
 @app.post("/add")
 async def add_servers(request: Request):
-    respawn_dead_servers()
+    with app.lock:
+        respawn_dead_servers()
     req = await request.json()
     n = req["n"]
     hostnames = req["hostnames"]
@@ -187,7 +192,8 @@ async def add_servers(request: Request):
 
 @app.delete("/rm")
 async def delete_servers(request: Request):
-    respawn_dead_servers()
+    with app.lock:
+        respawn_dead_servers()
     req = await request.json()
     n = req["n"]
     hostnames = req["hostnames"]
@@ -308,7 +314,8 @@ def catch_all_path(_path: str, request: Request):
 
         except requests.RequestException as e:
             print(f"An error occurred during the request: {e}")
-            respawn_dead_servers()
+            with app.lock:
+                respawn_dead_servers()
             return RedirectResponse(url=url)
             # return JSONResponse(content="error occured", status_code=400)
 
