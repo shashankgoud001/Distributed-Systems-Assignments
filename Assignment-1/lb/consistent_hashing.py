@@ -1,3 +1,5 @@
+import hashlib
+
 class ServerNode:
     def __init__(self, i, j, ip, port):
         self.server_id_i = i
@@ -43,6 +45,12 @@ class ConsistentHashing:
     # Server mapping hash function
     def server_hash(self,i, j) -> int:
         return (i**2 + j**2 + 2 * i * j + 25) % self.num_slots
+    
+    def server_hash_sha_256(self, i, j) -> int:
+        """
+            SHA-256 hash function for mapping
+        """
+        return int(hashlib.sha256(str(i).encode() + str(j).encode()).hexdigest(), 16) % self.num_slots
 
     # Linear Probing for servers in case of collision
     def linear_probe(self,pos) -> int:
@@ -101,15 +109,6 @@ class ConsistentHashing:
             self.circular_array[j].next = pos
             j = (j - 1 + self.num_slots) % self.num_slots
 
-    # Add Request
-    def add_request(self, i, request: RequestNode):
-        """
-        Adds request to the map
-        """
-        pos = self.request_hash(i)
-        self.circular_array[pos].requests.append(request)
-        self.circular_array[pos].next = self.find_nearest_server(pos)
-
     # Add Server
     def add_server(self, i, ip, port):
         """
@@ -119,24 +118,15 @@ class ConsistentHashing:
         accordingly
         """
         for j in range(self.vir_servers):
-            pos = self.linear_probe(self.server_hash(i, j))
+            '''
+                Choose the hash function here for testing purpose
+            '''
+            # pos = self.linear_probe(self.server_hash(i, j))
+            pos = self.linear_probe(self.server_hash_sha_256(i, j))
             if pos == -1:
                 return "Slots are full cannot add new server"
             self.circular_array[pos].server = ServerNode(i, j, ip, port)
             self.map_server_to_request(pos)
-
-    # Remove Request
-    def remove_request(self, i, request: RequestNode):
-        """
-        Removes request from the map
-        """
-        pos = self.request_hash(i)
-        if request not in self.circular_array[pos].requests:
-            # needs to return error
-            return "Error : cannot find the request"
-        else:
-            self.circular_array[pos].requests.remove(request)
-            return "Success : Removed the request"
 
     # Remove Server
     def remove_server(self, i):
@@ -147,7 +137,11 @@ class ConsistentHashing:
         clockwise direction
         """
         for j in range(self.vir_servers):
-            pos = self.server_hash(i, j)
+            '''
+                Choose the hash function here for testing purpose
+            '''
+            # pos = self.server_hash(i, j)
+            pos = self.server_hash_sha_256(i, j)
             while (
                 self.circular_array[pos].server is None
                 or self.circular_array[pos].server.server_id_i != i
