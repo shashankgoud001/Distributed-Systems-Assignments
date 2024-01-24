@@ -40,7 +40,12 @@ class ConsistentHashing:
 
     # Request mapping hash function
     def request_hash(self,i) -> int:
-        return (i**2 + 2 * i + 17) % self.num_slots
+        '''
+            Choose the hash function here for testing purpose
+            between the two hash functions
+        '''
+        # return (i**2 + 2 * i + 17) % self.num_slots
+        return int(hashlib.sha256(str(i).encode()).hexdigest(), 16) % self.num_slots
 
     # Server mapping hash function
     def server_hash(self,i, j) -> int:
