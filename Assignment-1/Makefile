@@ -11,5 +11,8 @@ clean:
 clean_servers:
 	-docker rm -f $$(docker ps -aqf "ancestor=serverimg")
 
+remove_images:
+	-docker rmi -f 
+
 
 	
