@@ -17,4 +17,47 @@
 ## Client
 - Client sends the requests to the loadbalancer.
 
-## Analysis
+
+
+## Run Locally
+Ensure docker, docker-compose and jupyter-notebook are installed.
+
+Clone the project
+
+```bash
+  git clone https://github.com/shashankgoud001/Distributed-Systems-Assignments.git
+```
+
+Go to the project directory
+
+```bash
+  cd Distributed-Systems-Assignments/Assignment1
+```
+
+Install dependencies (For Analysis part)  
+
+
+```bash
+  pip3 install requests, aiohttp, matplotlib
+```
+
+Build docker images for Loadbalancer and Server
+
+```bash
+  sudo make build
+```
+Start the Loadbalancer
+
+```bash
+  sudo make 
+```
+Now run the code from **analysis.ipynb**z (covers task A1, A2, A3) and **analysis-task-A4.ipynb** (covers task A4)
+
+Remove all containers
+
+```bash
+  sudo make clean
+```
+
+
+
