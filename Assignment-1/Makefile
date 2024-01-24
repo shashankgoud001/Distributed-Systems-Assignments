@@ -1,5 +1,7 @@
 start:
-	docker-compose up lb 
+	docker-compose up -d lb
+	sleep 2
+	curl -X POST http://localhost:5000/add -d '{"n": 3, "hostnames": ["s1", "s2", "s3"]}' 
 
 build:
 	docker-compose build 
