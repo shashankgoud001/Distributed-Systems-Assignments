@@ -50,7 +50,7 @@ class ConsistentHashing:
         """
             SHA-256 hash function for mapping
         """
-        return int(hashlib.sha256(str(i).encode() + str(j).encode()).hexdigest(), 16) % self.num_slots
+        return int(hashlib.sha256(str(i).encode() + "-".encode() + str(j).encode()).hexdigest(), 16) % self.num_slots
 
     # Linear Probing for servers in case of collision
     def linear_probe(self,pos) -> int:
