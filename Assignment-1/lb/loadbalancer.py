@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse,RedirectResponse
 from random import randint
 import requests
 from requests.adapters import HTTPAdapter, Retry
@@ -8,6 +8,7 @@ import random
 from urllib.parse import urlparse, urlunparse
 from consistent_hashing import *
 import uuid
+from time import sleep
 
 app = FastAPI()
 app.c_hash = ConsistentHashing(3, 512, 9)
@@ -18,10 +19,8 @@ app.max_servindex = 1024
 
 
 def respawn_dead_servers():
-
-
     change_list = []
-    for serv_name, details  in app.serverList.items():
+    for serv_name, details  in list(app.serverList.items()):
         request_url = f"http://{details['ip']}:8080/heartbeat"
 
         try:
@@ -36,7 +35,7 @@ def respawn_dead_servers():
 
             data = response.json()
             print(f'<+> Server {serv_name} is alive; Response: {data}')
-            
+               
         except requests.RequestException as e:
             print(f'<!> Server {serv_name} is dead; Error: {e}')
             new_server_name = serv_name + "_new"
@@ -70,8 +69,12 @@ def respawn_dead_servers():
         app.c_hash.remove_server(app.serverList[new_name]['index'])
         app.serverList[new_name]['ip'] = ipaddr
         app.c_hash.add_server(app.serverList[new_name]['index'], app.serverList[new_name]['ip'], 8080)
+    
+    if len(change_list) > 0:
+        print(f'<+> Waiting for new servers to start properly ....')
+        sleep(0.5)
 
-
+  
 @app.get("/rep") 
 def replicas():
     respawn_dead_servers()
@@ -169,6 +172,7 @@ async def add_servers(request: Request):
         print(app.serverList)
 
         servers = list(app.serverList.keys())
+        sleep(1)
         return JSONResponse(
             status_code=200,
             content={
@@ -265,7 +269,15 @@ async def delete_servers(request: Request):
 
 @app.get("/{_path:path}")
 def catch_all_path(_path: str, request: Request):
-    respawn_dead_servers()
+    if len(app.serverList) == 0:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "message": "No servers available",
+                "status": "failure"
+            }
+        )
+    
     allowed = ["home", "heartbeat"]
     if _path not in allowed:
         response = {
@@ -296,7 +308,9 @@ def catch_all_path(_path: str, request: Request):
 
         except requests.RequestException as e:
             print(f"An error occurred during the request: {e}")
-            return JSONResponse(content="error occured", status_code=400)
+            respawn_dead_servers()
+            return RedirectResponse(url=url)
+            # return JSONResponse(content="error occured", status_code=400)
 
         # print(request.client)
 
